@@ -2,42 +2,38 @@
 # Uses the .NET SDK image for building
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
-# Set the working directory inside the container
-# This is a temporary staging area for the source code.
-WORKDIR /src
+# Set the working directory inside the container to the application's root.
+# Assuming Render's "Root Directory" for the service is set to 'BookStoreTester/'.
+WORKDIR /app
 
-# Copy all content from the build context (where Dockerfile is located)
-# to the working directory '/src' in the container.
-# Since your Dockerfile is in 'BookStoreTester/', this will copy
-# the contents of 'BookStoreTester/' (including .csproj) to '/src'.
-COPY . .
+# Copy the .csproj file to leverage Docker layer caching.
+# The .csproj file is expected to be in the root of the build context (which is 'BookStoreTester/').
+COPY *.csproj ./
 
-# Set the working directory to the project folder inside the container
-# This is crucial so 'dotnet restore' and 'dotnet publish' can find the .csproj
-# Replace 'BookStoreTester' with the actual name of your project folder if different
-WORKDIR /src/BookStoreTester
-
-# Restore project dependencies
-# 'dotnet restore' will now find 'BookStoreTester.csproj' in the current WORKDIR
+# Restore project dependencies.
+# 'dotnet restore' will find the .csproj in the current WORKDIR (/app).
 RUN dotnet restore
 
-# Publish the application to an 'out' directory
-# -c Release: Build in Release configuration
-# -o out: Output to a directory named 'out' within the current WORKDIR (/src/BookStoreTester)
+# Copy the rest of the application's source code.
+# The .dockerignore file (located in 'BookStoreTester/') will prevent 'Dockerfile' itself
+# from being copied into '/app', preventing it from being accidentally compiled as C# code.
+COPY . .
+
+# Publish the application to an 'out' directory within the current WORKDIR (/app).
 RUN dotnet publish -c Release -o out
 
 # Stage 2: Serve the Blazor application
-# Uses the ASP.NET runtime image for a smaller, production-ready image
+# Uses the ASP.NET runtime image for a smaller, production-ready image.
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 
-# Set the working directory for the runtime stage
+# Set the working directory for the runtime stage.
 WORKDIR /app
 
-# Copy the published output from the 'build' stage
+# Copy the published output from the 'build' stage.
 # The 'out' directory from the previous stage is copied to '/app' in this stage.
-COPY --from=build /src/BookStoreTester/out ./
+COPY --from=build /app/out ./
 
-# Set the ASP.NET Core URL to listen on the port provided by Render
+# Set the ASP.NET Core URL to listen on the port provided by Render.
 # Render automatically sets the $PORT environment variable.
 ENV ASPNETCORE_URLS=http://+:$PORT
 
@@ -45,6 +41,6 @@ ENV ASPNETCORE_URLS=http://+:$PORT
 # Render will map its external port to this internal container port.
 EXPOSE 8080
 
-# Command to run the application when the container starts
+# Command to run the application when the container starts.
 # 'BookStoreTester.dll' is the name of your compiled application DLL.
 ENTRYPOINT ["dotnet", "BookStoreTester.dll"]
