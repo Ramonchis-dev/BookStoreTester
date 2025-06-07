@@ -11,14 +11,14 @@
         <div class="col-12">
             <h1 class="mb-4"><i class="fas fa-book"></i> Book Store Testing Application</h1>
 
-            <!-- Controls Panel -->
+
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fas fa-sliders-h"></i> Configuration</h5>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <!-- Language/Region -->
+
                         <div class="col-md-3">
                             <label for="locale" class="form-label">Language & Region</label>
                             <select class="form-select" id="locale" @bind="SelectedLocale">
@@ -30,7 +30,6 @@
                             </select>
                         </div>
 
-                        <!-- Seed -->
                         <div class="col-md-3">
                             <label for="seed" class="form-label">Seed</label>
                             <div class="input-group">
@@ -41,14 +40,12 @@
                             </div>
                         </div>
 
-                        <!-- Average Likes -->
                         <div class="col-md-3">
                             <label for="likes" class="form-label">Avg Likes per Book: @AvgLikes.ToString("F1")</label>
                             <input type="range" class="form-range" id="likes" min="0" max="10" step="0.1"
                                    @bind="AvgLikes" />
                         </div>
 
-                        <!-- Average Reviews -->
                         <div class="col-md-3">
                             <label for="reviews" class="form-label">Avg Reviews per Book</label>
                             <input type="number" class="form-control" id="reviews" min="0" max="20" step="0.1"
@@ -70,7 +67,6 @@
                 </div>
             </div>
 
-            <!-- Loading Indicator -->
             @if (isLoading)
             {
                 <div class="text-center py-4">
@@ -81,12 +77,11 @@
                 </div>
             }
 
-            <!-- Books Display -->
             @if (!isLoading)
             {
                 @if (isGalleryView)
                 {
-                    <!-- Gallery View -->
+
                     <div class="row" id="booksContainer">
                         @foreach (var book in books)
                         {
@@ -135,7 +130,7 @@
                 }
                 else
                 {
-                    <!-- Table View -->
+
                     <div class="table-responsive">
                         <table class="table table-hover" id="booksTable">
                             <thead class="table-dark">
@@ -218,7 +213,6 @@
                     </div>
                 }
 
-                <!-- Load More Button -->
                 <div class="text-center py-4">
                     @if (isLoadingMore)
                     {
@@ -242,7 +236,6 @@
     private List<Book> books = new();
     private HashSet<int> expandedBooks = new();
 
-    // Converted to public properties
     private SupportedLocale _selectedLocale = SupportedLocale.EnglishUS;
     public SupportedLocale SelectedLocale
     {
@@ -315,7 +308,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _seed = new Random().Next(1000, 999999); // Use backing field for initial assignment
+        _seed = new Random().Next(1000, 999999);
         await LoadInitialBooks();
     }
 
@@ -333,13 +326,12 @@
         isLoading = true;
         StateHasChanged();
 
-        await Task.Delay(100); // Small delay to show loading state
+        await Task.Delay(100); 
 
         books.Clear();
         expandedBooks.Clear();
         currentPage = 1;
 
-        // Use public properties here
         var newBooks = BookService.GenerateBooks(1, initialPageSize, SelectedLocale, Seed, AvgLikes, AvgReviews);
         books.AddRange(newBooks);
 
@@ -352,11 +344,11 @@
         isLoadingMore = true;
         StateHasChanged();
 
-        await Task.Delay(100); // Small delay to show loading state
+        await Task.Delay(100);
 
         currentPage++;
         var startIndex = (currentPage - 1) * additionalPageSize + initialPageSize;
-        // Use public properties here
+
         var newBooks = BookService.GenerateBooks(startIndex, additionalPageSize, SelectedLocale, Seed, AvgLikes, AvgReviews);
         books.AddRange(newBooks);
 
