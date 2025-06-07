@@ -1,0 +1,69 @@
+﻿html, body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.book-card {
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+    .book-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+.book-cover {
+    height: 200px;
+    object-fit: cover;
+}
+
+.book-detail-cover {
+    max-height: 250px;
+    object-fit: cover;
+}
+
+.book-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+    .book-row:hover {
+        background-color: rgba(0,123,255,0.1);
+    }
+
+.book-details {
+    background-color: #f8f9fa;
+}
+
+.reviews-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.form-range {
+    cursor: pointer;
+}
+
+.spinner-border {
+    width: 2rem;
+    height: 2rem;
+}
+
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }

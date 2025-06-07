@@ -1,0 +1,413 @@
+﻿@page "/"
+@using BookStoreTester.Models
+@using BookStoreTester.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
+
+<PageTitle>Book Store Tester</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4"><i class="fas fa-book"></i> Book Store Testing Application</h1>
+
+            <!-- Controls Panel -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-sliders-h"></i> Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Language/Region -->
+                        <div class="col-md-3">
+                            <label for="locale" class="form-label">Language & Region</label>
+                            <select class="form-select" id="locale" @bind="SelectedLocale">
+                                <option value="@SupportedLocale.EnglishUS">English (US)</option>
+                                <option value="@SupportedLocale.German">Deutsch (DE)</option>
+                                <option value="@SupportedLocale.Japanese">日本語 (JP)</option>
+                                <option value="@SupportedLocale.French">Français (FR)</option>
+                                <option value="@SupportedLocale.Spanish">Español (ES)</option>
+                            </select>
+                        </div>
+
+                        <!-- Seed -->
+                        <div class="col-md-3">
+                            <label for="seed" class="form-label">Seed</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="seed" @bind="Seed" />
+                                <button class="btn btn-outline-secondary" type="button" @onclick="GenerateRandomSeed">
+                                    <i class="fas fa-random"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Average Likes -->
+                        <div class="col-md-3">
+                            <label for="likes" class="form-label">Avg Likes per Book: @AvgLikes.ToString("F1")</label>
+                            <input type="range" class="form-range" id="likes" min="0" max="10" step="0.1"
+                                   @bind="AvgLikes" />
+                        </div>
+
+                        <!-- Average Reviews -->
+                        <div class="col-md-3">
+                            <label for="reviews" class="form-label">Avg Reviews per Book</label>
+                            <input type="number" class="form-control" id="reviews" min="0" max="20" step="0.1"
+                                   @bind="AvgReviews" />
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button class="btn btn-success me-2" @onclick="ExportToCsv">
+                                <i class="fas fa-download"></i> Export to CSV
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick="ToggleView">
+                                <i class="fas fa-@(isGalleryView ? "table" : "th")"></i>
+                                @(isGalleryView ? "Table View" : "Gallery View")
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Indicator -->
+            @if (isLoading)
+            {
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Generating books...</p>
+                </div>
+            }
+
+            <!-- Books Display -->
+            @if (!isLoading)
+            {
+                @if (isGalleryView)
+                {
+                    <!-- Gallery View -->
+                    <div class="row" id="booksContainer">
+                        @foreach (var book in books)
+                        {
+                            <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                                <div class="card book-card h-100" @onclick="() => ToggleBookDetails(book.Index)">
+                                    <img src="@book.CoverImageUrl" class="card-img-top book-cover" alt="Book Cover" />
+                                    <div class="card-body">
+                                        <h6 class="card-title">@book.Title</h6>
+                                        <p class="card-text small text-muted">
+                                            @string.Join(", ", book.Authors)
+                                        </p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">@book.Publisher</small>
+                                            <div>
+                                                <span class="badge bg-primary">@book.Likes <i class="fas fa-heart"></i></span>
+                                                <span class="badge bg-secondary">@book.Reviews?.Count ?? 0 <i class="fas fa-star"></i></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if (expandedBooks.Contains(book.Index))
+                                    {
+                                        <div class="card-footer">
+                                            <p><strong>ISBN:</strong> @book.ISBN</p>
+                                            @if (book.Reviews != null && book.Reviews.Any())
+                                            {
+                                                <h6>Reviews:</h6>
+                                                @foreach (var review in book.Reviews.Take(2))
+                                                {
+                                                    <div class="border-start border-3 border-info ps-2 mb-2">
+                                                        <p class="mb-1 small">@review.Text</p>
+                                                        <small class="text-muted">- @review.Author (@review.Rating★)</small>
+                                                    </div>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <p class="text-muted">No reviews available.</p>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <!-- Table View -->
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="booksTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Index</th>
+                                    <th>ISBN</th>
+                                    <th>Title</th>
+                                    <th>Author(s)</th>
+                                    <th>Publisher</th>
+                                    <th>Likes</th>
+                                    <th>Reviews</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var book in books)
+                                {
+                                    <tr class="book-row" @onclick="() => ToggleBookDetails(book.Index)">
+                                        <td>@book.Index</td>
+                                        <td>@book.ISBN</td>
+                                        <td>@book.Title</td>
+                                        <td>@string.Join(", ", book.Authors)</td>
+                                        <td>@book.Publisher</td>
+                                        <td>
+                                            <span class="badge bg-primary">@book.Likes <i class="fas fa-heart"></i></span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">@book.Reviews?.Count ?? 0 <i class="fas fa-star"></i></span>
+                                        </td>
+                                    </tr>
+
+                                    @if (expandedBooks.Contains(book.Index))
+                                    {
+                                        <tr class="book-details">
+                                            <td colspan="7">
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <img src="@book.CoverImageUrl" class="img-fluid rounded book-detail-cover" alt="Book Cover" />
+                                                    </div>
+                                                    <div class="col-md-9">
+                                                        <h5>@book.Title</h5>
+                                                        <p><strong>Authors:</strong> @string.Join(", ", book.Authors)</p>
+                                                        <p><strong>Publisher:</strong> @book.Publisher</p>
+                                                        <p><strong>ISBN:</strong> @book.ISBN</p>
+                                                        <p><strong>Likes:</strong> @book.Likes</p>
+
+                                                        @if (book.Reviews != null && book.Reviews.Any())
+                                                        {
+                                                            <h6>Reviews (@book.Reviews.Count):</h6>
+                                                            <div class="reviews-container">
+                                                                @foreach (var review in book.Reviews)
+                                                                {
+                                                                    <div class="border-start border-3 border-info ps-3 mb-3">
+                                                                        <p class="mb-1">@review.Text</p>
+                                                                        <div class="d-flex justify-content-between">
+                                                                            <small class="text-muted">- @review.Author</small>
+                                                                            <small class="text-warning">
+                                                                                @for (int i = 1; i <= 5; i++)
+                                                                                {
+                                                                                    <i class="fas fa-star @(i <= review.Rating ? "text-warning" : "text-muted")"></i>
+                                                                                }
+                                                                                (@review.Rating)
+                                                                            </small>
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <p class="text-muted">No reviews available.</p>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <!-- Load More Button -->
+                <div class="text-center py-4">
+                    @if (isLoadingMore)
+                    {
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading more...</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-primary" @onclick="LoadMoreBooks">
+                            <i class="fas fa-plus"></i> Load More Books
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Book> books = new();
+    private HashSet<int> expandedBooks = new();
+
+    // Converted to public properties
+    private SupportedLocale _selectedLocale = SupportedLocale.EnglishUS;
+    public SupportedLocale SelectedLocale
+    {
+        get => _selectedLocale;
+        set
+        {
+            if (_selectedLocale != value)
+            {
+                _selectedLocale = value;
+                OnParameterChanged();
+            }
+        }
+    }
+
+    private int _seed = 42;
+    public int Seed
+    {
+        get => _seed;
+        set
+        {
+            if (_seed != value)
+            {
+                _seed = value;
+                OnParameterChanged();
+            }
+        }
+    }
+
+    private double _avgLikes = 3.7;
+    public double AvgLikes
+    {
+        get => _avgLikes;
+        set
+        {
+            if (_avgLikes != value)
+            {
+                _avgLikes = value;
+                OnParameterChanged();
+            }
+        }
+    }
+
+    private double _avgReviews = 4.7;
+    public double AvgReviews
+    {
+        get => _avgReviews;
+        set
+        {
+            if (_avgReviews != value)
+            {
+                _avgReviews = value;
+                OnParameterChanged();
+            }
+        }
+    }
+
+    private bool isGalleryView = false;
+    private bool isLoading = true;
+    private bool isLoadingMore = false;
+
+    private int currentPage = 1;
+    private const int initialPageSize = 20;
+    private const int additionalPageSize = 10;
+
+    [Inject]
+    private BookDataService BookService { get; set; } = default!;
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _seed = new Random().Next(1000, 999999); // Use backing field for initial assignment
+        await LoadInitialBooks();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("setupInfiniteScroll",
+                DotNetObjectReference.Create(this));
+        }
+    }
+
+    private async Task LoadInitialBooks()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        await Task.Delay(100); // Small delay to show loading state
+
+        books.Clear();
+        expandedBooks.Clear();
+        currentPage = 1;
+
+        // Use public properties here
+        var newBooks = BookService.GenerateBooks(1, initialPageSize, SelectedLocale, Seed, AvgLikes, AvgReviews);
+        books.AddRange(newBooks);
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadMoreBooks()
+    {
+        isLoadingMore = true;
+        StateHasChanged();
+
+        await Task.Delay(100); // Small delay to show loading state
+
+        currentPage++;
+        var startIndex = (currentPage - 1) * additionalPageSize + initialPageSize;
+        // Use public properties here
+        var newBooks = BookService.GenerateBooks(startIndex, additionalPageSize, SelectedLocale, Seed, AvgLikes, AvgReviews);
+        books.AddRange(newBooks);
+
+        isLoadingMore = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task LoadMoreFromScroll()
+    {
+        if (!isLoadingMore)
+        {
+            await LoadMoreBooks();
+        }
+    }
+
+    private void OnParameterChanged()
+    {
+        _ = LoadInitialBooks();
+    }
+
+    private void GenerateRandomSeed()
+    {
+        Seed = new Random().Next(1000, 999999);
+    }
+
+    private void ToggleBookDetails(int bookIndex)
+    {
+        if (expandedBooks.Contains(bookIndex))
+        {
+            expandedBooks.Remove(bookIndex);
+        }
+        else
+        {
+            expandedBooks.Add(bookIndex);
+        }
+        StateHasChanged();
+    }
+
+    private void ToggleView()
+    {
+        isGalleryView = !isGalleryView;
+        expandedBooks.Clear();
+        StateHasChanged();
+    }
+
+    private async Task ExportToCsv()
+    {
+        var csvContent = BookService.ExportToCsv(books);
+        var fileName = $"books_export_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, csvContent, "text/csv");
+    }
+}
