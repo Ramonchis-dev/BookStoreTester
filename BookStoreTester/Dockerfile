@@ -2,34 +2,24 @@
 # Uses the .NET SDK image for building
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
-# Set the working directory inside the container to a temporary build directory.
-# This is a common practice to isolate build artifacts.
-WORKDIR /src
+# Set the working directory inside the container to the application's root.
+# IMPORTANT: This Dockerfile assumes Render's "Root Directory" for the service
+# is correctly set to your Blazor project folder (e.g., 'BookStoreTester/').
+# This means that when Docker builds, the 'BookStoreTester' folder is the build context root.
+WORKDIR /app
 
-# Copy the specific .csproj file for your application to a subfolder.
-# This assumes your Dockerfile is in the 'BookStoreTester/' directory on your host,
-# and that 'BookStoreTester/' is set as Render's 'Root Directory'.
-# So, the build context root is 'BookStoreTester/'.
-# We copy BookStoreTester.csproj from the build context root into /src/BookStoreTester/ in the container.
-COPY BookStoreTester.csproj ./BookStoreTester/
-
-# Restore project dependencies for the specific .csproj file.
-# We explicitly tell 'dotnet restore' which project file to process,
-# ensuring it finds it in the /src/BookStoreTester/ directory within the container.
-RUN dotnet restore ./BookStoreTester/BookStoreTester.csproj
-
-# Copy the rest of the application's source code from the build context.
-# This will copy all other files from 'BookStoreTester/' on your host to '/src/' in the container.
-# The .dockerignore file (located in 'BookStoreTester/') will prevent 'Dockerfile' itself
-# from being copied into '/src', preventing it from being accidentally compiled as C# code.
+# Copy ALL content from the build context (which is 'BookStoreTester/' on your host,
+# assuming Render's Root Directory is correctly set) to the current WORKDIR /app in the container.
+# This ensures that your 'BookStoreTester.csproj' and all other source files are present in /app.
+# Ensure you have a '.dockerignore' file in 'BookStoreTester/' with 'Dockerfile' inside it.
 COPY . .
 
-# Set the working directory to the specific project directory where 'dotnet publish' will run.
-# This ensures 'dotnet publish' has access to all necessary project files.
-WORKDIR /src/BookStoreTester
+# Restore project dependencies.
+# 'dotnet restore' will now find 'BookStoreTester.csproj' in the current WORKDIR (/app),
+# as it was copied by the 'COPY . .' command.
+RUN dotnet restore
 
-# Publish the application to an 'out' directory within the current WORKDIR.
-# The published output will be located at /src/BookStoreTester/out in this stage.
+# Publish the application to an 'out' directory within the current WORKDIR (/app).
 RUN dotnet publish -c Release -o out
 
 # Stage 2: Serve the Blazor application
@@ -40,8 +30,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
 # Copy the published output from the 'build' stage to the final runtime location.
-# We copy from the explicit path where it was created in the build stage.
-COPY --from=build /src/BookStoreTester/out ./
+# It was created at '/app/out' in the previous stage.
+COPY --from=build /app/out ./
 
 # Set the ASP.NET Core URL to listen on the port provided by Render.
 # Render automatically sets the $PORT environment variable for web services.
